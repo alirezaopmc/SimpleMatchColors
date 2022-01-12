@@ -21,7 +21,7 @@ class Cell {
   }
   
   dfs(shouldDelete = false) {
-    console.log(this.i, this.j)
+    // console.log(this.i, this.j)
     if (this.vis) return 0;
 
     this.vis = true;
@@ -33,9 +33,25 @@ class Cell {
       }
     }
     
-    if (shouldDelete) this.c = 'black'
-
+    if (shouldDelete){
+       this.c = 'black'
+      //  console.log(this.c)
+    }
     return cnt;
+  }
+
+  retire_vis(){
+    // console.log(this.i, this.j)
+    if (!this.vis) return 0;
+
+    this.vis = false;
+    
+    for(let child of this.adj) {
+      if (child.c == this.c && child.vis) {
+        child.retire_vis();
+      }
+    }
+    
   }
   
   render() {
@@ -136,7 +152,7 @@ class Grid {
       for(let j=0; j<this.m; j++) {
         let cell = this.grid[i][j];
         
-        let cnt = cell.dfs(cell);
+        let cnt = cell.dfs();
         
         if (cnt >= 3) return true;
       }
@@ -147,10 +163,31 @@ class Grid {
   
   delete(i, j) {
     let cell = this.grid[i][j];
-    
-    if (cell.dfs() >= 3) {
-      this.clear()
-      cell.dfs(true);
+    let cnt = cell.dfs()
+    if (cnt >= 3){
+      this.grid.forEach(
+        row => row.forEach(
+          cell => {
+            if(cell.vis == true){
+              count += 1
+              cell.vis = false;
+              gsap.to(cell, {
+                y: 400,
+              });
+              var newCell = new Cell(cell.x, 0, cell.w, cell.h, grid.randomColor(), cell.i, cell.j);
+              // document.getElementsByTagName("h2")[0].innerHTML = count.toString();
+              grid.grid[cell.i][cell.j] = newCell;           
+              gsap.to(newCell, {
+                y: cell.y,
+              });
+              grid.connectAdj()
+            }
+          }
+        )
+      )
+    }
+    else{
+      cell.retire_vis()
     }
   }
   
@@ -159,28 +196,109 @@ class Grid {
       row => row.forEach(cell => cell.render())
     )
   }
+  swap(i1, j1, i2, j2){
+    let cell_1 = this.grid[i1][j1];
+    let cell_2 = this.grid[i2][j2];
+    cell_1.adj = [];
+    cell_2.adj = [];
+    this.grid[i1][j1] = cell_2;
+    this.grid[i2][j2] = cell_1;
+    cell_1.i = i2;
+    cell_2.i = i1;
+    cell_1.j = j2;
+    cell_2.j = j1;
+    this.connectAdj();
+  }
 }
 
 let grid = new Grid(5, 5, W, H);
 
 
+function mouseReleased() {
+  let i = Math.floor(mouseY / (H / grid.n));
+  let j = Math.floor(mouseX / (W / grid.m));
+  
+  if (cur_i == i && cur_j == j){
+    grid.delete(cur_i, cur_j);
+    return;
+  }
+  else{
+    let cell1 = grid.grid[i][j];
+    let cell2 = grid.grid[cur_i][cur_j];
+
+    if (i == cur_i - 1 && j == cur_j){
+      gsap.to(cell1, {
+      y: cell1.y + 80,
+      duration: 0.2
+    });
+      gsap.to(cell2, {
+      y: cell2.y - 80,
+      duration: 0.2
+    });
+    grid.swap(i ,j ,cur_i ,cur_j);
+    }
+    
+    if (i == cur_i + 1 && j == cur_j) {
+      gsap.to(cell1, {
+        y: cell1.y - 80,
+        duration: 0.2
+      });
+        gsap.to(cell2, {
+        y: cell2.y + 80,
+        duration: 0.2
+      });
+      grid.swap(i ,j ,cur_i ,cur_j);
+    }
+
+    if (i == cur_i && j == cur_j - 1) {
+      gsap.to(cell1, {
+        x: cell1.x + 80,
+        duration: 0.2
+      });
+        gsap.to(cell2, {
+        x: cell2.x - 80,
+        duration: 0.2
+      });
+      grid.swap(i ,j ,cur_i ,cur_j);
+    }
+
+    if (i == cur_i && j == cur_j + 1) {
+      gsap.to(cell1, {
+        x: cell1.x - 80,
+        duration: 0.2
+      });
+        gsap.to(cell2, {
+        x: cell2.x + 80,
+        duration: 0.2
+      });
+      grid.swap(i ,j ,cur_i ,cur_j);
+    }
+  }
+}
+
+let cur_i;
+let cur_j;
+
 function mousePressed() {
   if (mouseX > W || mouseY > H) {
     return;
   }
-  
+
   let i = Math.floor(mouseY / (H / grid.n));
   let j = Math.floor(mouseX / (W / grid.m));
-  
-  grid.delete(i, j)
+  cur_i = i;
+  cur_j = j;
 }
 
 function setup() {
   createCanvas(W, H);
 }
 
+let count = 0;
+
 function draw() {
   background(220);
-  
   grid.render()
 }
+
+
